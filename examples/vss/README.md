@@ -3,13 +3,16 @@ of view (accepting just a key, which is often a field from the packet)
 but diverse from the insertion point of view.  We could support these
 in DDDP with some extra keywords that go inside match() in the
 position where "primary key" normally goes.  The following could
-appear any number of times:
+appear any number of times.  Each <field> is the name of a table
+column:
 
     * exact(<field>): exact match on specified fields
 
     * prefix(<field>, <plen>): prefix match on pair of columns
 
     * ternary(<field>, <mask>): ternary match on pair of columns
+
+    * range(<lower>, <upper>): range match (inclusive or exclusive?)
 
 These could appear at most once:
 
