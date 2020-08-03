@@ -81,9 +81,11 @@ function ipv4_match(m: IPv4_Match, a: IPv4Address): bool
 
 input relation DMAC(nextHop: IPv4Address,
                     dmac: EthernetAddress)
+primary key(r) r.nextHop
 
 input relation SMAC(outputPort: port_id,
                     smac: EthernetAddress)
+primary key(r) r.outputPort
 
 function pipe(headers: mut parsed_packet,
               parseError: error,
@@ -106,12 +108,12 @@ function pipe(headers: mut parsed_packet,
     };
     headers.ip = Some{ipv4_dec_ttl(ip)};
 
-    //var maybe_dmac = DMAC.where(|x| x.nextHop == ipv4_match.nextHop).nth(0);
+    //var maybe_dmac = DMAC.where(|x| x.nextHop == ipv4_match.nextHop);
     var maybe_dmac: Option<DMAC> = None;
     var dmac = maybe_dmac?;
     headers.ethernet.dstAddr = dmac.dmac;
 
-    //var maybe_smac = SMAC.where(|x| x.outputPort == ipv4_match.outputPort).nth(0);
+    //var maybe_smac = SMAC.where(|x| x.outputPort == ipv4_match.outputPort);
     var maybe_smac: Option<SMAC> = None;
     var smac = maybe_smac?;
     headers.ethernet.srcAddr = smac.smac;
