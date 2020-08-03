@@ -68,6 +68,7 @@ input relation IPv4_Match(dstAddr: IPv4Address,
                           dstAddr_plen: bit<8>,
                           nextHop: IPv4Address,
                           outputPort: port_id)
+//match(lpm(dstAddr, dstAddr_plen))
 
 function ipv4_mask(plen: bit<8>): IPv4Address {
     (64'hffffffff00000000 >> plen)[31:0]
