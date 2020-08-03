@@ -99,28 +99,14 @@ input relation DMAC(nextHop: IPv4Address,
 input relation SMAC(outputPort: port_id,
                     smac: EthernetAddress)
 
-// XXX DDlog doesn't have (in)out parameters, so 'headers' can't be
-// usefully modified.  TTL can't be decremented for example.
-//
-// We have a few choices there:
-//
-// - Return the packet headers and their disposition, e.g. return
-//   (parsed_packet, out_control).  This is very P4-like.
-//
-// - Modify the headers locally.  To send it, pass them to an extern
-//   function that does the send.  This is a nicer API but harder to
-//   translate into a P4 backend.  (We would probably need an extra
-//   parameter with the packet data, since currently we only have the
-//   parsed headers.)
-function pipe(headers0: parsed_packet,
+function pipe(headers: mut parsed_packet,
               parseError: error,
-              inCtrl: in_control): Option<(parsed_packet, out_control)>
+              inCtrl: in_control): Option<out_control>
 {
     if (parseError != NoError) {
         return None
     };
 
-    var headers = headers0;
     var ip = match (headers.ip) {
         Some{ip} -> ip,
         None -> return None
@@ -130,7 +116,7 @@ function pipe(headers0: parsed_packet,
     var maybe_match: Option<IPv4_Match> = None;
     var ipv4_match = maybe_match?;
     if (ip.ttl <= 1) {
-        return Some{(headers, OutControl{cPU_OUT_PORT()})}
+        return Some{OutControl{cPU_OUT_PORT()}}
     };
     headers.ip = Some{ipv4_dec_ttl(ip)};
 
@@ -144,5 +130,5 @@ function pipe(headers0: parsed_packet,
     var smac = maybe_smac?;
     headers.ethernet = eth_set_src(headers.ethernet, smac.smac);
 
-    Some{(headers, OutControl { ipv4_match.outputPort })}
+    Some{OutControl { ipv4_match.outputPort }}
 }
