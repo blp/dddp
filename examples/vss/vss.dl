@@ -9,20 +9,6 @@ typedef ethernet_h = Ethernet_h {
     etherType: bit<16>
 }
 
-function eth_set_src(eth0: ethernet_h, srcAddr: EthernetAddress): ethernet_h
-{
-    var eth = eth0;
-    eth.srcAddr = srcAddr;
-    eth
-}
-
-function eth_set_dst(eth0: ethernet_h, dstAddr: EthernetAddress): ethernet_h
-{
-    var eth = eth0;
-    eth.dstAddr = dstAddr;
-    eth
-}
-
 typedef ipv4_h = Ipv4_h {
     version: bit<4>,
     ihl: bit<4>,
@@ -123,12 +109,12 @@ function pipe(headers: mut parsed_packet,
     //var maybe_dmac = DMAC.where(|x| x.nextHop == ipv4_match.nextHop).nth(0);
     var maybe_dmac: Option<DMAC> = None;
     var dmac = maybe_dmac?;
-    headers.ethernet = eth_set_dst(headers.ethernet, dmac.dmac);
+    headers.ethernet.dstAddr = dmac.dmac;
 
     //var maybe_smac = SMAC.where(|x| x.outputPort == ipv4_match.outputPort).nth(0);
     var maybe_smac: Option<SMAC> = None;
     var smac = maybe_smac?;
-    headers.ethernet = eth_set_src(headers.ethernet, smac.smac);
+    headers.ethernet.srcAddr = smac.smac;
 
     Some{OutControl { ipv4_match.outputPort }}
 }
