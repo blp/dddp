@@ -1,0 +1,148 @@
+import model
+
+typedef EthernetAddress = bit<48>
+typedef IPv4Address = bit<32>
+
+typedef ethernet_h = Ethernet_h {
+    dstAddr: EthernetAddress,
+    srcAddr: EthernetAddress,
+    etherType: bit<16>
+}
+
+function eth_set_src(eth0: ethernet_h, srcAddr: EthernetAddress): ethernet_h
+{
+    var eth = eth0;
+    eth.srcAddr = srcAddr;
+    eth
+}
+
+function eth_set_dst(eth0: ethernet_h, dstAddr: EthernetAddress): ethernet_h
+{
+    var eth = eth0;
+    eth.dstAddr = dstAddr;
+    eth
+}
+
+typedef ipv4_h = Ipv4_h {
+    version: bit<4>,
+    ihl: bit<4>,
+    diffserv: bit<8>,
+    totalLen: bit<16>,
+    identification: bit<16>,
+    flags: bit<3>,
+    fragOffset: bit<13>,
+    ttl: bit<8>,
+    protocol: bit<8>,
+    hdrChecksum: bit<16>,
+    srcAddr: IPv4Address,
+    dstAddr: IPv4Address
+}
+
+function csum_finish(partial: bit<32>): bit<16>
+{
+    if (partial > 32'hffff) {
+        csum_finish((partial & 'hffff) + (partial >> 16))
+    } else {
+        ~partial as u16
+    }
+}
+
+function recalc_csum16(csum: bit<16>, old: bit<16>, new: bit<16>): bit<16>
+{
+    /* Ones-complement arithmetic is endian-independent, so this code
+     * does not use htons() or ntohs().
+     *
+     * See RFC 1624 for formula and explanation. */
+    var hc_complement = ~csum;
+    var m_complement = ~old;
+    var m_prime = new;
+    csum_finish(hc_complement as u32 + m_complement as u32 + m_prime as u32)
+}
+
+function ipv4_dec_ttl(ip0: ipv4_h): ipv4_h
+{
+  var ip = ip0;
+  ip.ttl = ip.ttl - 1;
+  ip.hdrChecksum = recalc_csum16(
+      ip.hdrChecksum, ip0.ttl as u16, ip.ttl as u16); // XXX endianness?
+  ip
+}
+
+typedef error = NoError |
+                IPv4OptionsNotSupported |
+                IPv4IncorrectVersion |
+                IPv4ChecksumError
+
+typedef parsed_packet = ParsedPacket {
+    ethernet: ethernet_h,
+    ip: Option<ipv4_h>
+}
+
+input relation IPv4_Match(dstAddr: IPv4Address,
+                          dstAddr_plen: bit<8>,
+                          nextHop: IPv4Address,
+                          outputPort: port_id)
+
+function ipv4_mask(plen: bit<8>): IPv4Address {
+    (64'hffffffff00000000 >> plen)[31:0]
+}
+
+function ipv4_match(m: IPv4_Match, a: IPv4Address): bool
+{
+    var mask = ipv4_mask(m.dstAddr_plen);
+    ((m.dstAddr ^ a) & mask) == 0
+}
+
+input relation DMAC(nextHop: IPv4Address,
+                    dmac: EthernetAddress)
+
+input relation SMAC(outputPort: port_id,
+                    smac: EthernetAddress)
+
+// XXX DDlog doesn't have (in)out parameters, so 'headers' can't be
+// usefully modified.  TTL can't be decremented for example.
+//
+// We have a few choices there:
+//
+// - Return the packet headers and their disposition, e.g. return
+//   (parsed_packet, out_control).  This is very P4-like.
+//
+// - Modify the headers locally.  To send it, pass them to an extern
+//   function that does the send.  This is a nicer API but harder to
+//   translate into a P4 backend.  (We would probably need an extra
+//   parameter with the packet data, since currently we only have the
+//   parsed headers.)
+function pipe(headers0: parsed_packet,
+              parseError: error,
+              inCtrl: in_control): Option<(parsed_packet, out_control)>
+{
+    if (parseError != NoError) {
+        return None
+    };
+
+    var headers = headers0;
+    var ip = match (headers.ip) {
+        Some{ip} -> ip,
+        None -> return None
+    };
+
+    //var maybe_match = IPv4_Match.where(|m| ipv4_match(m, ip.dstAddr)).order_by(|m| m.plen).nth(0);
+    var maybe_match: Option<IPv4_Match> = None;
+    var ipv4_match = maybe_match?;
+    if (ip.ttl <= 1) {
+        return Some{(headers, OutControl{cPU_OUT_PORT()})}
+    };
+    headers.ip = Some{ipv4_dec_ttl(ip)};
+
+    //var maybe_dmac = DMAC.where(|x| x.nextHop == ipv4_match.nextHop).nth(0);
+    var maybe_dmac: Option<DMAC> = None;
+    var dmac = maybe_dmac?;
+    headers.ethernet = eth_set_dst(headers.ethernet, dmac.dmac);
+
+    //var maybe_smac = SMAC.where(|x| x.outputPort == ipv4_match.outputPort).nth(0);
+    var maybe_smac: Option<SMAC> = None;
+    var smac = maybe_smac?;
+    headers.ethernet = eth_set_src(headers.ethernet, smac.smac);
+
+    Some{(headers, OutControl { ipv4_match.outputPort })}
+}

@@ -1,0 +1,12 @@
+typedef port_id = bit<4>
+function rEAL_PORT_COUNT(): port_id = 8
+typedef in_control = InControl { input_port: port_id }
+
+function rECIRCULATE_IN_PORT(): port_id = 'hd
+function cPU_IN_PORT(): port_id = 'he
+
+typedef out_control = OutControl { output_port: port_id }
+
+function dROP_PORT(): port_id = 'hf
+function cPU_OUT_PORT(): port_id = 'he
+function rECIRCULATE_OUT_PORT(): port_id = 'hd
