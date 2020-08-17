@@ -88,36 +88,117 @@ input relation SMAC(outputPort: port_id,
                     smac: EthernetAddress)
 primary key(r) r.outputPort
 
-function pipe(headers: mut parsed_packet,
-              parseError: error,
-              inCtrl: in_control): Option<out_control>
-{
-    if (parseError != NoError) {
-        return None
-    };
+control TopPipe(inout Parsed_packet headers,
+                in error parseError, // parser error
+                in InControl inCtrl, // input port
+                out OutControl outCtrl) {
+     /**
+      * Indicates that a packet is dropped by setting the
+      * output port to the DROP_PORT
+      */
+      action Drop_action()
+      { outCtrl.outputPort = DROP_PORT; }
 
-    var ip = match (headers.ip) {
-        Some{ip} -> ip,
-        None -> return None
-    };
+      IPv4Address nextHop;
 
-    //var maybe_match = IPv4_Match.where(|m| ipv4_match(m, ip.dstAddr)).order_by(|m| m.plen).nth(0);
-    var maybe_match: Option<IPv4_Match> = None;
-    var ipv4_match = maybe_match?;
-    if (ip.ttl <= 1) {
-        return Some{OutControl{cPU_OUT_PORT()}}
-    };
-    headers.ip = Some{ipv4_dec_ttl(ip)};
+     /**
+      * Set the next hop and the output port.
+      * Decrements ipv4 ttl field.
+      * @param ivp4_dest ipv4 address of next hop
+      * @param port output port
+      */
+      action Set_nhop(IPv4Address ipv4_dest, PortId port) {
+          nextHop = ipv4_dest;
+          headers.ip.ttl = headers.ip.ttl-1;
+          outCtrl.outputPort = port;
+      }
 
-    //var maybe_dmac = DMAC.where(|x| x.nextHop == ipv4_match.nextHop);
-    var maybe_dmac: Option<DMAC> = None;
-    var dmac = maybe_dmac?;
-    headers.ethernet.dstAddr = dmac.dmac;
+     /**
+      * Computes address of next Ipv4 hop and output port
+      * based on the Ipv4 destination of the current packet.
+      * Decrements packet Ipv4 TTL.
+      */
+     table ipv4_match {
+         key = { headers.ip.dstAddr : lpm @name(dstAddr) @plen(dstAddr_plen); }
+         actions = {
+              Drop_action;
+              Set_nhop;
+         }
 
-    //var maybe_smac = SMAC.where(|x| x.outputPort == ipv4_match.outputPort);
-    var maybe_smac: Option<SMAC> = None;
-    var smac = maybe_smac?;
-    headers.ethernet.srcAddr = smac.smac;
+         size = 1024;
+         default_action = Drop_action;
+     }
 
-    Some{OutControl { ipv4_match.outputPort }}
+     /**
+      * Send the packet to the CPU port
+      */
+      action Send_to_cpu()
+      { outCtrl.outputPort = CPU_OUT_PORT; }
+
+     /**
+      * Check packet TTL and send to CPU if expired.
+      */
+     table check_ttl {
+         key = { headers.ip.ttl : exact; }
+         actions = { Send_to_cpu; NoAction; }
+         const default_action = NoAction; // defined in core.p4
+     }
+
+     /**
+      * Set the destination MAC address of the packet
+      * @param dmac destination MAC address.
+      */
+      action Set_dmac(EthernetAddress dmac)
+      { headers.ethernet.dstAddr = dmac; }
+     /**
+      * Set the destination Ethernet address of the packet
+      * based on the next hop IP address.
+      */
+      table dmac {
+          key = { nextHop : exact; }
+          actions = {
+               Drop_action;
+               Set_dmac;
+          }
+          size = 1024;
+          default_action = Drop_action;
+      }
+
+      /**
+       * Set the source MAC address.
+       * @param smac: source MAC address to use
+       */
+       action Set_smac(EthernetAddress smac)
+       { headers.ethernet.srcAddr = smac; }
+
+      /**
+       * Set the source mac address based on the output port.
+       */
+      table smac {
+           key = { outCtrl.outputPort : exact; }
+           actions = {
+                Drop_action;
+                Set_smac;
+          }
+          size = 16;
+          default_action = Drop_action;
+      }
+
+      apply {
+          if (parseError != error.NoError) {
+               Drop_action();  // invoke drop directly
+               return;
+          }
+
+          ipv4_match.apply(); // Match result will go into nextHop
+          if (outCtrl.outputPort == DROP_PORT) return;
+
+          check_ttl.apply();
+          if (outCtrl.outputPort == CPU_OUT_PORT) return;
+
+          dmac.apply();
+          if (outCtrl.outputPort == DROP_PORT) return;
+
+          smac.apply();
+    }
 }

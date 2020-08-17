@@ -128,3 +128,33 @@ Rust doesn't have anything like bit<N> or signed<N> except for N =
 https://immunant.com/blog/2020/01/bitfields/ for an overview of the
 state of the art of Rust bit-field substitutes.  None of them looks
 great.
+
+###
+
+How do we work with nondeterministic systems?  Like NSX's boolean
+minimization system?  Or allocators?
+
+1. Bottom-up: start from unmodified P4 program, stack a DDlog-based
+   control plane/controller on top of it
+
+   - p4toddlog (or write it by hand)
+   - P4 Runtime glue (Antonin built P4 Runtime)
+     * grpc crate
+     
+2. P4+: replace actions with values
+
+What about distribution across multiple switches?  Families of similar
+programs (multiple hypervisors).  Different families (HV vs gateway vs
+pool).
+
+* Global tables.
+
+* Instance tables.
+
+Write a paper about the new OVN.
+- Benchmarking.
+- Plot numbers with Hillview.
+- Performance, expressivity.
+
+Broadcom table-based API for their switches (Vladimir worked on it)
+"Logical Table API" SDKLT https://github.com/Broadcom-Network-Switching-Software/SDKLT
