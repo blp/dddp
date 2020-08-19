@@ -1,4 +1,9 @@
-# Build
+# P4++ skeleton
+
+There's not anything useful here yet.  It's skeletal.  Here are
+instructions, anyway.
+
+## Build dddp
 
 1. Get the submodules:
 
@@ -22,4 +27,65 @@ $ cargo install grpcio-compiler
 
 ```
 cargo build
+```
+
+## Build bmv2 simple_switch_grpc
+
+I had to apply the following patch before it worked for me properly.
+The ``Makefile.am`` change was necessary to make the binary link.  The
+``main.cpp`` change was necessary to keep grpc startup from hanging
+the binary in an infinite loop (this is a grpc bug that is fixed in
+new-enough grpc, so possibly you won't have it).
+
+```
+diff --git a/targets/simple_switch_grpc/Makefile.am b/targets/simple_switch_grpc/Makefile.am
+index 1a8510cc4c93..01e53cdcf959 100644
+--- a/targets/simple_switch_grpc/Makefile.am
++++ b/targets/simple_switch_grpc/Makefile.am
+@@ -22,7 +22,7 @@ bin_PROGRAMS = simple_switch_grpc
+ simple_switch_grpc_SOURCES = main.cpp
+ 
+ simple_switch_grpc_LDADD = \
+-libsimple_switch_grpc.la
++libsimple_switch_grpc.la -lpip4info
+ 
+ # We follow this tutorial to link with grpc++_reflection:
+ # https://github.com/grpc/grpc/blob/master/doc/server_reflection_tutorial.md
+diff --git a/targets/simple_switch_grpc/main.cpp b/targets/simple_switch_grpc/main.cpp
+index ae7f32c7b8bb..05a232a5547f 100644
+--- a/targets/simple_switch_grpc/main.cpp
++++ b/targets/simple_switch_grpc/main.cpp
+@@ -111,3 +111,9 @@ main(int argc, char* argv[]) {
+   runner.wait();
+   return 0;
+ }
++
++void grpc_tracer_init(const char *)
++{}
++
++void grpc_tracer_init()
++{}
+```
+
+## Run
+
+1. Start ``simple_switch_grpc``.  From its build directory:
+
+```
+$ ./simple_switch_grpc --no-p4 -- --grpc-server-addr 0.0.0.0:50051 --cpu-port 1010
+Calling target program-options parser
+Server listening on 0.0.0.0:50051
+```
+
+   (If you don't see the second line above then probably grpc startup is
+   hanging as mentioned above.)
+
+2. Run the dddp binary.  It only sends a capabilities request and
+   prints the reply.  This only has the effect of verifying that grpc
+   is working properly on both ends.  The binary does nothing else
+   yet:
+   
+```
+$ target/debug/client 50051
+send  and received p4runtime_api_version: "1.2.0"
 ```
