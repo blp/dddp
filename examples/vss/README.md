@@ -44,12 +44,13 @@ expressions used for lookup, e.g.:
 >         y        : exact;
 
 DDlog needs column names.  This is easy enough because P4 has a
-standard @name annotation for that:
+standard @name annotation for that, and the compiler generates one if
+it's missing:
 
 >     key = {
 >         y & 0x7  : exact @name("masked_y");
 >         f1(x, y) : exact @name("f1");
->         y        : exact;
+>         y        : exact;     //  defaults to @name("y").
 >     }
 
 ### actions vs values
@@ -75,8 +76,7 @@ where:
 >       }
 
 One could translate P4 actions to DDlog in a graceful way using an
-enum.  Naming might be a challenge since each P4 table may have a
-different but overlapping set of actions.
+enum.
 
 ### default action
 
@@ -88,6 +88,9 @@ const), the default action is really just the *default* default
 action: the control plane is allowed to change it at runtime, so DDlog
 should probably be able to do it too.  I guess that could be through
 an output relation somehow?
+
+The eBPF compiler models each P4 table as two tables: the normal table
+and a second table that only contains the default action.
 
 ### match interface
 
@@ -117,6 +120,9 @@ Other match kinds could be supported as extensions:
       gracefully; maybe it would have to be two separate match kinds
       range_low and range_high.
 
+Architectures may define new `match_kinds`.  Google has proposed an
+additional `match_kind` `optional`.
+
 # DDlog <-> P4 types
 
 P4 and DDlog have similar bit<N> types.
@@ -140,7 +146,7 @@ minimization system?  Or allocators?
    - p4toddlog (or write it by hand)
    - P4 Runtime glue (Antonin built P4 Runtime)
      * grpc crate
-     
+
 2. P4+: replace actions with values
 
 What about distribution across multiple switches?  Families of similar
