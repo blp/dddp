@@ -1,0 +1,21 @@
+[package]
+name = "dddp"
+version = "0.1.0"
+authors = ["Ben Pfaff <bpfaff@vmware.com>"]
+build = "build.rs"
+
+[lib]
+name = "proto"
+path = "src/proto/mod.rs"
+
+[[bin]]
+name = "client"
+path = "src/main.rs"
+
+[dependencies]
+futures = "0.3.5"
+grpcio = "0.6.0"
+protobuf = "~2"
+
+[build-dependencies]
+protoc-grpcio = "2.0.0"
