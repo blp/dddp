@@ -1,0 +1,1289 @@
+{
+  "header_types" : [
+    {
+      "name" : "scalars_0",
+      "id" : 0,
+      "fields" : [
+        ["tmp", 64, false],
+        ["userMetadata._routing_metadata_nhop_ipv40", 32, false]
+      ]
+    },
+    {
+      "name" : "standard_metadata",
+      "id" : 1,
+      "fields" : [
+        ["ingress_port", 9, false],
+        ["egress_spec", 9, false],
+        ["egress_port", 9, false],
+        ["instance_type", 32, false],
+        ["packet_length", 32, false],
+        ["enq_timestamp", 32, false],
+        ["enq_qdepth", 19, false],
+        ["deq_timedelta", 32, false],
+        ["deq_qdepth", 19, false],
+        ["ingress_global_timestamp", 48, false],
+        ["egress_global_timestamp", 48, false],
+        ["mcast_grp", 16, false],
+        ["egress_rid", 16, false],
+        ["checksum_error", 1, false],
+        ["parser_error", 32, false],
+        ["priority", 3, false],
+        ["_padding", 3, false]
+      ]
+    },
+    {
+      "name" : "arp_t",
+      "id" : 2,
+      "fields" : [
+        ["hwType", 16, false],
+        ["protoType", 16, false],
+        ["hwAddrLen", 8, false],
+        ["protoAddrLen", 8, false],
+        ["opcode", 16, false],
+        ["hwSrcAddr", 48, false],
+        ["protoSrcAddr", 32, false],
+        ["hwDstAddr", 48, false],
+        ["protoDstAddr", 32, false]
+      ]
+    },
+    {
+      "name" : "cpu_header_t",
+      "id" : 3,
+      "fields" : [
+        ["zeros", 64, false],
+        ["reason", 16, false],
+        ["port", 16, false]
+      ]
+    },
+    {
+      "name" : "ethernet_t",
+      "id" : 4,
+      "fields" : [
+        ["dstAddr", 48, false],
+        ["srcAddr", 48, false],
+        ["etherType", 16, false]
+      ]
+    },
+    {
+      "name" : "ipv4_t",
+      "id" : 5,
+      "fields" : [
+        ["version", 4, false],
+        ["ihl", 4, false],
+        ["diffserv", 8, false],
+        ["totalLen", 16, false],
+        ["identification", 16, false],
+        ["flags", 3, false],
+        ["fragOffset", 13, false],
+        ["ttl", 8, false],
+        ["protocol", 8, false],
+        ["hdrChecksum", 16, false],
+        ["srcAddr", 32, false],
+        ["dstAddr", 32, false]
+      ]
+    }
+  ],
+  "headers" : [
+    {
+      "name" : "scalars",
+      "id" : 0,
+      "header_type" : "scalars_0",
+      "metadata" : true,
+      "pi_omit" : true
+    },
+    {
+      "name" : "standard_metadata",
+      "id" : 1,
+      "header_type" : "standard_metadata",
+      "metadata" : true,
+      "pi_omit" : true
+    },
+    {
+      "name" : "arp",
+      "id" : 2,
+      "header_type" : "arp_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "cpu_header",
+      "id" : 3,
+      "header_type" : "cpu_header_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "ethernet",
+      "id" : 4,
+      "header_type" : "ethernet_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "ipv4",
+      "id" : 5,
+      "header_type" : "ipv4_t",
+      "metadata" : false,
+      "pi_omit" : true
+    }
+  ],
+  "header_stacks" : [],
+  "header_union_types" : [],
+  "header_unions" : [],
+  "header_union_stacks" : [],
+  "field_lists" : [],
+  "errors" : [
+    ["NoError", 0],
+    ["PacketTooShort", 1],
+    ["NoMatch", 2],
+    ["StackOutOfBounds", 3],
+    ["HeaderTooShort", 4],
+    ["ParserTimeout", 5],
+    ["ParserInvalidArgument", 6]
+  ],
+  "enums" : [],
+  "parsers" : [
+    {
+      "name" : "parser",
+      "id" : 0,
+      "init_state" : "start",
+      "parse_states" : [
+        {
+          "name" : "parse_arp",
+          "id" : 0,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "arp"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        },
+        {
+          "name" : "parse_cpu_header",
+          "id" : 1,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "cpu_header"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : "parse_ethernet"
+            }
+          ],
+          "transition_key" : []
+        },
+        {
+          "name" : "parse_ethernet",
+          "id" : 2,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "ethernet"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x0800",
+              "mask" : null,
+              "next_state" : "parse_ipv4"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x0806",
+              "mask" : null,
+              "next_state" : "parse_arp"
+            },
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "etherType"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_ipv4",
+          "id" : 3,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "ipv4"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        },
+        {
+          "name" : "start",
+          "id" : 4,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "field",
+                  "value" : ["scalars", "tmp"]
+                },
+                {
+                  "type" : "lookahead",
+                  "value" : [0, 64]
+                }
+              ],
+              "op" : "set"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x0000000000000000",
+              "mask" : null,
+              "next_state" : "parse_cpu_header"
+            },
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : "parse_ethernet"
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "tmp"]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "parse_vsets" : [],
+  "deparsers" : [
+    {
+      "name" : "deparser",
+      "id" : 0,
+      "order" : ["cpu_header", "ethernet", "arp", "ipv4"],
+      "primitives" : []
+    }
+  ],
+  "meter_arrays" : [],
+  "counter_arrays" : [],
+  "register_arrays" : [],
+  "calculations" : [
+    {
+      "name" : "calc",
+      "id" : 0,
+      "algo" : "csum16",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "version"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ihl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "diffserv"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "totalLen"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "identification"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "flags"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "fragOffset"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ttl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        }
+      ]
+    },
+    {
+      "name" : "calc_0",
+      "id" : 1,
+      "algo" : "csum16",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "version"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ihl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "diffserv"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "totalLen"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "identification"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "flags"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "fragOffset"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ttl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        }
+      ]
+    }
+  ],
+  "learn_lists" : [],
+  "actions" : [
+    {
+      "name" : "rewrite_mac",
+      "id" : 0,
+      "runtime_data" : [
+        {
+          "name" : "smac",
+          "bitwidth" : 48
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "srcAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 192,
+            "column" : 19,
+            "source_fragment" : "smac) { ..."
+          }
+        }
+      ]
+    },
+    {
+      "name" : "_drop",
+      "id" : 1,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 139,
+            "column" : 4,
+            "source_fragment" : "drop()"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "do_decap_cpu_header",
+      "id" : 2,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["cpu_header", "port"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0x01ff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 209,
+            "column" : 4,
+            "source_fragment" : "modify_field(standard_metadata.egress_spec, cpu_header.port)"
+          }
+        },
+        {
+          "op" : "remove_header",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "cpu_header"
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 210,
+            "column" : 4,
+            "source_fragment" : "remove_header(cpu_header)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "set_dmac",
+      "id" : 3,
+      "runtime_data" : [
+        {
+          "name" : "dmac",
+          "bitwidth" : 48
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 168,
+            "column" : 16,
+            "source_fragment" : "dmac) { ..."
+          }
+        }
+      ]
+    },
+    {
+      "name" : "do_send_to_cpu",
+      "id" : 4,
+      "runtime_data" : [
+        {
+          "name" : "reason",
+          "bitwidth" : 16
+        },
+        {
+          "name" : "cpu_port",
+          "bitwidth" : 9
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "add_header",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "cpu_header"
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 173,
+            "column" : 4,
+            "source_fragment" : "add_header(cpu_header)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["cpu_header", "reason"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 172,
+            "column" : 22,
+            "source_fragment" : "reason, cpu_port) { ..."
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["cpu_header", "port"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["standard_metadata", "ingress_port"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 175,
+            "column" : 4,
+            "source_fragment" : "modify_field(cpu_header.port, standard_metadata.ingress_port)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 172,
+            "column" : 30,
+            "source_fragment" : "cpu_port) { ..."
+          }
+        }
+      ]
+    },
+    {
+      "name" : "do_send_to_cpu",
+      "id" : 5,
+      "runtime_data" : [
+        {
+          "name" : "reason",
+          "bitwidth" : 16
+        },
+        {
+          "name" : "cpu_port",
+          "bitwidth" : 9
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "add_header",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "cpu_header"
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 173,
+            "column" : 4,
+            "source_fragment" : "add_header(cpu_header)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["cpu_header", "reason"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 172,
+            "column" : 22,
+            "source_fragment" : "reason, cpu_port) { ..."
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["cpu_header", "port"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["standard_metadata", "ingress_port"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 175,
+            "column" : 4,
+            "source_fragment" : "modify_field(cpu_header.port, standard_metadata.ingress_port)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 172,
+            "column" : 30,
+            "source_fragment" : "cpu_port) { ..."
+          }
+        }
+      ]
+    },
+    {
+      "name" : "_drop",
+      "id" : 6,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 139,
+            "column" : 4,
+            "source_fragment" : "drop()"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "_drop",
+      "id" : 7,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 139,
+            "column" : 4,
+            "source_fragment" : "drop()"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "set_nhop",
+      "id" : 8,
+      "runtime_data" : [
+        {
+          "name" : "nhop_ipv4",
+          "bitwidth" : 32
+        },
+        {
+          "name" : "port",
+          "bitwidth" : 9
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "userMetadata._routing_metadata_nhop_ipv40"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 150,
+            "column" : 16,
+            "source_fragment" : "nhop_ipv4, port) { ..."
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 150,
+            "column" : 27,
+            "source_fragment" : "port) { ..."
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "ttl"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "+",
+                      "left" : {
+                        "type" : "field",
+                        "value" : ["ipv4", "ttl"]
+                      },
+                      "right" : {
+                        "type" : "hexstr",
+                        "value" : "0xff"
+                      }
+                    }
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 153,
+            "column" : 4,
+            "source_fragment" : "add_to_field(ipv4.ttl, -1)"
+          }
+        }
+      ]
+    }
+  ],
+  "pipelines" : [
+    {
+      "name" : "ingress",
+      "id" : 0,
+      "init_table" : "node_2",
+      "tables" : [
+        {
+          "name" : "decap_cpu_header",
+          "id" : 0,
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 213,
+            "column" : 0,
+            "source_fragment" : "table decap_cpu_header { ..."
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [2],
+          "actions" : ["do_decap_cpu_header"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "do_decap_cpu_header" : null
+          },
+          "default_entry" : {
+            "action_id" : 2,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "send_arp_to_cpu",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 220,
+            "column" : 0,
+            "source_fragment" : "table send_arp_to_cpu { ..."
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [5],
+          "actions" : ["do_send_to_cpu"],
+          "base_default_next" : "node_6",
+          "next_tables" : {
+            "do_send_to_cpu" : "node_6"
+          },
+          "default_entry" : {
+            "action_id" : 5,
+            "action_const" : false,
+            "action_data" : ["0x1", "0x40"],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "ipv4_lpm",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 156,
+            "column" : 0,
+            "source_fragment" : "table ipv4_lpm { ..."
+          },
+          "key" : [
+            {
+              "match_type" : "lpm",
+              "name" : "ipv4.dstAddr",
+              "target" : ["ipv4", "dstAddr"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "lpm",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [8, 7],
+          "actions" : ["set_nhop", "_drop"],
+          "base_default_next" : "forward",
+          "next_tables" : {
+            "set_nhop" : "forward",
+            "_drop" : "forward"
+          },
+          "default_entry" : {
+            "action_id" : 7,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "forward",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 179,
+            "column" : 0,
+            "source_fragment" : "table forward { ..."
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "routing_metadata.nhop_ipv4",
+              "target" : ["scalars", "userMetadata._routing_metadata_nhop_ipv40"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 512,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [3, 4, 6],
+          "actions" : ["set_dmac", "do_send_to_cpu", "_drop"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "set_dmac" : null,
+            "do_send_to_cpu" : null,
+            "_drop" : null
+          },
+          "default_entry" : {
+            "action_id" : 4,
+            "action_const" : false,
+            "action_data" : ["0x0", "0x40"],
+            "action_entry_const" : false
+          }
+        }
+      ],
+      "action_profiles" : [],
+      "conditionals" : [
+        {
+          "name" : "node_2",
+          "id" : 0,
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 228,
+            "column" : 8,
+            "source_fragment" : "valid(cpu_header)"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["cpu_header", "$valid$"]
+              }
+            }
+          },
+          "true_next" : "decap_cpu_header",
+          "false_next" : "node_4"
+        },
+        {
+          "name" : "node_4",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 231,
+            "column" : 12,
+            "source_fragment" : "valid(arp)"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["arp", "$valid$"]
+              }
+            }
+          },
+          "true_next" : "send_arp_to_cpu",
+          "false_next" : "node_6"
+        },
+        {
+          "name" : "node_6",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 234,
+            "column" : 23,
+            "source_fragment" : "and"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "and",
+              "left" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "d2b",
+                  "left" : null,
+                  "right" : {
+                    "type" : "field",
+                    "value" : ["ipv4", "$valid$"]
+                  }
+                }
+              },
+              "right" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : ">",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["ipv4", "ttl"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0x00"
+                  }
+                }
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "ipv4_lpm"
+        }
+      ]
+    },
+    {
+      "name" : "egress",
+      "id" : 1,
+      "init_table" : "node_11",
+      "tables" : [
+        {
+          "name" : "send_frame",
+          "id" : 4,
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 196,
+            "column" : 0,
+            "source_fragment" : "table send_frame { ..."
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "standard_metadata.egress_port",
+              "target" : ["standard_metadata", "egress_port"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 256,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [0, 1],
+          "actions" : ["rewrite_mac", "_drop"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "rewrite_mac" : null,
+            "_drop" : null
+          },
+          "default_entry" : {
+            "action_id" : 1,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        }
+      ],
+      "action_profiles" : [],
+      "conditionals" : [
+        {
+          "name" : "node_11",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "simple_router.p4",
+            "line" : 242,
+            "column" : 8,
+            "source_fragment" : "not"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "not",
+              "left" : null,
+              "right" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "d2b",
+                  "left" : null,
+                  "right" : {
+                    "type" : "field",
+                    "value" : ["cpu_header", "$valid$"]
+                  }
+                }
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "send_frame"
+        }
+      ]
+    }
+  ],
+  "checksums" : [
+    {
+      "name" : "cksum",
+      "id" : 0,
+      "target" : ["ipv4", "hdrChecksum"],
+      "type" : "generic",
+      "calculation" : "calc",
+      "verify" : false,
+      "update" : true,
+      "if_cond" : {
+        "type" : "bool",
+        "value" : true
+      }
+    },
+    {
+      "name" : "cksum_0",
+      "id" : 1,
+      "target" : ["ipv4", "hdrChecksum"],
+      "type" : "generic",
+      "calculation" : "calc_0",
+      "verify" : true,
+      "update" : false,
+      "if_cond" : {
+        "type" : "bool",
+        "value" : true
+      }
+    }
+  ],
+  "force_arith" : [],
+  "extern_instances" : [],
+  "field_aliases" : [
+    [
+      "queueing_metadata.enq_timestamp",
+      ["standard_metadata", "enq_timestamp"]
+    ],
+    [
+      "queueing_metadata.enq_qdepth",
+      ["standard_metadata", "enq_qdepth"]
+    ],
+    [
+      "queueing_metadata.deq_timedelta",
+      ["standard_metadata", "deq_timedelta"]
+    ],
+    [
+      "queueing_metadata.deq_qdepth",
+      ["standard_metadata", "deq_qdepth"]
+    ],
+    [
+      "intrinsic_metadata.ingress_global_timestamp",
+      ["standard_metadata", "ingress_global_timestamp"]
+    ],
+    [
+      "intrinsic_metadata.egress_global_timestamp",
+      ["standard_metadata", "egress_global_timestamp"]
+    ],
+    [
+      "intrinsic_metadata.mcast_grp",
+      ["standard_metadata", "mcast_grp"]
+    ],
+    [
+      "intrinsic_metadata.egress_rid",
+      ["standard_metadata", "egress_rid"]
+    ],
+    [
+      "intrinsic_metadata.priority",
+      ["standard_metadata", "priority"]
+    ]
+  ],
+  "program" : "./simple_router.p4i",
+  "__meta__" : {
+    "version" : [2, 23],
+    "compiler" : "https://github.com/p4lang/p4c"
+  }
+}

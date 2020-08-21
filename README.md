@@ -80,12 +80,11 @@ Server listening on 0.0.0.0:50051
    (If you don't see the second line above then probably grpc startup is
    hanging as mentioned above.)
 
-2. Run the dddp binary.  It only sends a capabilities request and
-   prints the reply.  This only has the effect of verifying that grpc
-   is working properly on both ends.  The binary does nothing else
-   yet:
+2. Run the dddp binary.  It sends a capabilities request and receives
+   the reply, then it sends a forwarding pipeline reconfiguration
+   message and prints the reply.  It doesn't do anything else yet:
    
 ```
-$ target/debug/client 50051
+$ target/debug/client 50051 examples/simple_router/simple_router.p4info.bin examples/simple_router/simple_router.json
 send  and received p4runtime_api_version: "1.2.0"
 ```
