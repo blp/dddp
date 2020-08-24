@@ -2,19 +2,19 @@ extern crate protoc_grpcio;
 
 fn main() {
     let protos = [
-        "p4/v1/p4runtime.proto",
-        "p4/v1/p4data.proto",
-        "p4/config/v1/p4info.proto",
-        "p4/config/v1/p4types.proto",
-        "google/rpc/status.proto",
-        "google/rpc/code.proto",
+        ("p4runtime/proto", "p4/v1/p4runtime.proto"),
+        ("p4runtime/proto", "p4/v1/p4data.proto"),
+        ("p4runtime/proto", "p4/config/v1/p4info.proto"),
+        ("p4runtime/proto", "p4/config/v1/p4types.proto"),
+        ("googleapis", "google/rpc/status.proto"),
+        ("googleapis", "google/rpc/code.proto"),
     ];
     for proto in &protos {
-        println!("cargo:rerun-if-changed={}", proto);
+        println!("cargo:rerun-if-changed={}/{}", proto.0, proto.1);
     }
     protoc_grpcio::compile_grpc_protos(
-        &protos,
-        &["p4runtime/proto", "googleapis"],
+        &protos.iter().map(|x| x.1).collect::<Vec<&str>>(),
+        &protos.iter().map(|x| x.0).collect::<Vec<&str>>(),
         "src/proto",
         None,
     )
