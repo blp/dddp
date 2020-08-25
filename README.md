@@ -80,11 +80,10 @@ Server listening on 0.0.0.0:50051
    (If you don't see the second line above then probably grpc startup is
    hanging as mentioned above.)
 
-2. Run the dddp binary.  It sends a capabilities request and receives
-   the reply, then it sends a forwarding pipeline reconfiguration
-   message and prints the reply.  It doesn't do anything else yet:
+2. Run the `p4runtime-cli` binary.  It has multiple subcommands.  Use
+   `--help` to see them, or `<command> --help` for details on a
+   subcommand.  To set the pipeline, for example:
    
 ```
-$ target/debug/client 50051 examples/simple_router/simple_router.p4info.bin examples/simple_router/simple_router.json
-send  and received p4runtime_api_version: "1.2.0"
+$ target/debug/p4runtime-cli set-pipeline examples/simple_router/simple_router.p4info.bin examples/simple_router/simple_router.json
 ```
