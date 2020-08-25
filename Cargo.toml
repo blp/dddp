@@ -9,13 +9,15 @@ name = "proto"
 path = "src/proto/mod.rs"
 
 [[bin]]
-name = "client"
+name = "p4runtime-cli"
 path = "src/main.rs"
 
 [dependencies]
+clap = "2.33"
 futures = "0.3.5"
 grpcio = "0.6.0"
 protobuf = "~2"
+isatty = "0.1"
 
 [build-dependencies]
 protoc-grpcio = "2.0.0"
