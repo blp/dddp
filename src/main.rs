@@ -11,6 +11,7 @@ use proto::p4runtime::ForwardingPipelineConfig_Cookie;
 use proto::p4runtime::GetForwardingPipelineConfigRequest;
 use proto::p4runtime::SetForwardingPipelineConfigRequest;
 use proto::p4runtime::SetForwardingPipelineConfigRequest_Action;
+use proto::p4runtime::Uint128;
 use proto::p4runtime_grpc::P4RuntimeClient;
 
 use protobuf::Message;
@@ -37,6 +38,19 @@ fn validate_u64(s: String) -> Result<(), String> {
         .map(|_| ())
 }
 
+fn parse_uint128(s: &str) -> Result<Uint128, <u128 as FromStr>::Err> {
+    let x = str::parse::<u128>(&s)?;
+    let mut uint128 = Uint128::new();
+    uint128.set_high((x >> 64) as u64);
+    uint128.set_low(x as u64);
+    Ok(uint128)
+}
+fn validate_uint128(s: String) -> Result<(), String> {
+    parse_uint128(&s)
+        .map_err(|_| String::from("Value must be unsigned 128-bit integer."))
+        .map(|_| ())
+}
+
 fn bytes_to_text(s: Vec<u8>) -> Option<String>{
     match String::from_utf8(s) {
         Ok(utf8) if !utf8.contains("\0") => Some(utf8),
@@ -51,11 +65,17 @@ fn set_pipeline_subcommand<'a, 'b>() -> App<'a, 'b> {
         .arg(Arg::from_usage("<opaque> 'Name of file with P4 device config in device-specific format'"))
         .arg(Arg::from_usage("--cookie [COOKIE] 'Cookie to install'")
              .validator(validate_u64))
+        .arg(Arg::from_usage("--action [ACTION] 'Action to take'")
+             .possible_values(&["verify", "verify-and-save",
+                                "verify-and-commit", "reconcile-and-commit"])
+             .default_value("verify-and-commit")
+             .case_insensitive(true))
 }
 
 fn do_set_pipeline(set_pipeline: &ArgMatches,
                    device_id: u64,
                    role_id: u64,
+                   election_id: Option<Uint128>,
                    target: &str,
                    client: &P4RuntimeClient) {
     let p4info_os = set_pipeline.value_of_os("p4info").unwrap();
@@ -78,15 +98,52 @@ fn do_set_pipeline(set_pipeline: &ArgMatches,
         config.set_cookie(cookie_jar);
     }
 
+    use SetForwardingPipelineConfigRequest_Action::*;
+    let action = match set_pipeline.value_of("action").unwrap() {
+        "verify" => VERIFY,
+        "verify-and-save" => VERIFY_AND_SAVE,
+        "verify-and-commit" => VERIFY_AND_COMMIT,
+        _ => RECONCILE_AND_COMMIT
+    };
+
     let mut set_pipeline_request = SetForwardingPipelineConfigRequest::new();
-    set_pipeline_request.set_action(SetForwardingPipelineConfigRequest_Action::VERIFY_AND_COMMIT);
+    set_pipeline_request.set_action(action);
     set_pipeline_request.set_device_id(device_id);
     set_pipeline_request.set_role_id(role_id);
+    if let Some(id) = election_id {
+        set_pipeline_request.set_election_id(id);
+    }
     set_pipeline_request.set_config(config);
     client
         .set_forwarding_pipeline_config(&set_pipeline_request)
         .unwrap_or_else(|err| {
             panic!("{}: failed to set forwarding pipeline ({})", target, err)
+        });
+}
+
+fn commit_pipeline_subcommand<'a, 'b>() -> App<'a, 'b> {
+    SubCommand::with_name("commit-pipeline")
+        .about("Realizes the config last saved, but not committed (e.g. with \
+                \"set-pipeline --action=verify-and-save\")")
+}
+
+fn do_commit_pipeline(device_id: u64,
+                      role_id: u64,
+                      election_id: Option<Uint128>,
+                      target: &str,
+                      client: &P4RuntimeClient) {
+    use SetForwardingPipelineConfigRequest_Action::COMMIT;
+    let mut set_pipeline_request = SetForwardingPipelineConfigRequest::new();
+    set_pipeline_request.set_action(COMMIT);
+    set_pipeline_request.set_device_id(device_id);
+    set_pipeline_request.set_role_id(role_id);
+    if let Some(id) = election_id {
+        set_pipeline_request.set_election_id(id);
+    }
+    client
+        .set_forwarding_pipeline_config(&set_pipeline_request)
+        .unwrap_or_else(|err| {
+            panic!("{}: failed to commit forwarding pipeline ({})", target, err)
         });
 }
 
@@ -190,12 +247,16 @@ fn main() {
         .arg(Arg::from_usage("-r, --role-id <ID> 'Role ID'")
              .validator(validate_u64)
              .default_value("0"))
+        .arg(Arg::from_usage("-e, --election-id [ID] 'Election ID'")
+             .validator(validate_uint128))
         .subcommand(get_pipeline_subcommand())
         .subcommand(set_pipeline_subcommand())
+        .subcommand(commit_pipeline_subcommand())
         .get_matches();
 
     let device_id = parse_u64(matches.value_of("device-id").unwrap()).unwrap();
     let role_id = parse_u64(matches.value_of("role-id").unwrap()).unwrap();
+    let election_id = matches.value_of("election-id").map(|x| parse_uint128(x).unwrap());
 
     let env = Arc::new(EnvBuilder::new().build());
     let target = matches.value_of("target").unwrap();
@@ -203,7 +264,10 @@ fn main() {
     let client = P4RuntimeClient::new(ch);
 
     if let Some(set_pipeline) = matches.subcommand_matches("set-pipeline") {
-        do_set_pipeline(set_pipeline, device_id, role_id, target, &client);
+        do_set_pipeline(set_pipeline, device_id, role_id, election_id,
+                        target, &client);
+    } else if let Some(_) = matches.subcommand_matches("commit-pipeline") {
+        do_commit_pipeline(device_id, role_id, election_id, target, &client);
     } else if let Some(get_pipeline) = matches.subcommand_matches("get-pipeline") {
         do_get_pipeline(get_pipeline, device_id, target, &client);
     } else {
