@@ -6,6 +6,7 @@ extern crate protobuf;
 extern crate clap;
 use clap::{App, Arg, ArgMatches, SubCommand};
 
+use proto::p4runtime::CapabilitiesRequest;
 use proto::p4runtime::ForwardingPipelineConfig;
 use proto::p4runtime::ForwardingPipelineConfig_Cookie;
 use proto::p4runtime::GetForwardingPipelineConfigRequest;
@@ -14,8 +15,8 @@ use proto::p4runtime::SetForwardingPipelineConfigRequest_Action;
 use proto::p4runtime::Uint128;
 use proto::p4runtime_grpc::P4RuntimeClient;
 
-use protobuf::Message;
 use protobuf::parse_from_reader;
+use protobuf::Message;
 
 use std::env;
 use std::ffi::OsStr;
@@ -51,33 +52,44 @@ fn validate_uint128(s: String) -> Result<(), String> {
         .map(|_| ())
 }
 
-fn bytes_to_text(s: Vec<u8>) -> Option<String>{
+fn bytes_to_text(s: Vec<u8>) -> Option<String> {
     match String::from_utf8(s) {
         Ok(utf8) if !utf8.contains("\0") => Some(utf8),
-        _ => None
+        _ => None,
     }
 }
 
 fn set_pipeline_subcommand<'a, 'b>() -> App<'a, 'b> {
     SubCommand::with_name("set-pipeline")
         .about("Installs a new forwarding pipeline.")
-        .arg(Arg::from_usage("<p4info> 'Name of file with P4Info to install, in protobuf binary format'"))
-        .arg(Arg::from_usage("<opaque> 'Name of file with P4 device config in device-specific format'"))
-        .arg(Arg::from_usage("--cookie [COOKIE] 'Cookie to install'")
-             .validator(validate_u64))
-        .arg(Arg::from_usage("--action [ACTION] 'Action to take'")
-             .possible_values(&["verify", "verify-and-save",
-                                "verify-and-commit", "reconcile-and-commit"])
-             .default_value("verify-and-commit")
-             .case_insensitive(true))
+        .arg(Arg::from_usage(
+            "<p4info> 'Name of file with P4Info to install, in protobuf binary format'",
+        ))
+        .arg(Arg::from_usage(
+            "<opaque> 'Name of file with P4 device config in device-specific format'",
+        ))
+        .arg(Arg::from_usage("--cookie [COOKIE] 'Cookie to install'").validator(validate_u64))
+        .arg(
+            Arg::from_usage("--action [ACTION] 'Action to take'")
+                .possible_values(&[
+                    "verify",
+                    "verify-and-save",
+                    "verify-and-commit",
+                    "reconcile-and-commit",
+                ])
+                .default_value("verify-and-commit")
+                .case_insensitive(true),
+        )
 }
 
-fn do_set_pipeline(set_pipeline: &ArgMatches,
-                   device_id: u64,
-                   role_id: u64,
-                   election_id: Option<Uint128>,
-                   target: &str,
-                   client: &P4RuntimeClient) {
+fn do_set_pipeline(
+    set_pipeline: &ArgMatches,
+    device_id: u64,
+    role_id: u64,
+    election_id: Option<Uint128>,
+    target: &str,
+    client: &P4RuntimeClient,
+) {
     let p4info_os = set_pipeline.value_of_os("p4info").unwrap();
     let p4info_str = set_pipeline.value_of_lossy("p4info").unwrap();
     let mut p4info_file = fs::File::open(p4info_os)
@@ -86,8 +98,13 @@ fn do_set_pipeline(set_pipeline: &ArgMatches,
         .unwrap_or_else(|err| panic!("{}: could not read P4Info ({})", p4info_str, err));
 
     let opaque_filename = set_pipeline.value_of_os("opaque").unwrap();
-    let opaque = fs::read(opaque_filename)
-        .unwrap_or_else(|err| panic!("{}: could not read opaque data ({})", opaque_filename.to_string_lossy(), err));
+    let opaque = fs::read(opaque_filename).unwrap_or_else(|err| {
+        panic!(
+            "{}: could not read opaque data ({})",
+            opaque_filename.to_string_lossy(),
+            err
+        )
+    });
 
     let mut config = ForwardingPipelineConfig::new();
     config.set_p4_device_config(opaque);
@@ -103,7 +120,7 @@ fn do_set_pipeline(set_pipeline: &ArgMatches,
         "verify" => VERIFY,
         "verify-and-save" => VERIFY_AND_SAVE,
         "verify-and-commit" => VERIFY_AND_COMMIT,
-        _ => RECONCILE_AND_COMMIT
+        _ => RECONCILE_AND_COMMIT,
     };
 
     let mut set_pipeline_request = SetForwardingPipelineConfigRequest::new();
@@ -116,22 +133,23 @@ fn do_set_pipeline(set_pipeline: &ArgMatches,
     set_pipeline_request.set_config(config);
     client
         .set_forwarding_pipeline_config(&set_pipeline_request)
-        .unwrap_or_else(|err| {
-            panic!("{}: failed to set forwarding pipeline ({})", target, err)
-        });
+        .unwrap_or_else(|err| panic!("{}: failed to set forwarding pipeline ({})", target, err));
 }
 
 fn commit_pipeline_subcommand<'a, 'b>() -> App<'a, 'b> {
-    SubCommand::with_name("commit-pipeline")
-        .about("Realizes the config last saved, but not committed (e.g. with \
-                \"set-pipeline --action=verify-and-save\")")
+    SubCommand::with_name("commit-pipeline").about(
+        "Realizes the config last saved, but not committed (e.g. with \
+                \"set-pipeline --action=verify-and-save\")",
+    )
 }
 
-fn do_commit_pipeline(device_id: u64,
-                      role_id: u64,
-                      election_id: Option<Uint128>,
-                      target: &str,
-                      client: &P4RuntimeClient) {
+fn do_commit_pipeline(
+    device_id: u64,
+    role_id: u64,
+    election_id: Option<Uint128>,
+    target: &str,
+    client: &P4RuntimeClient,
+) {
     use SetForwardingPipelineConfigRequest_Action::COMMIT;
     let mut set_pipeline_request = SetForwardingPipelineConfigRequest::new();
     set_pipeline_request.set_action(COMMIT);
@@ -142,9 +160,7 @@ fn do_commit_pipeline(device_id: u64,
     }
     client
         .set_forwarding_pipeline_config(&set_pipeline_request)
-        .unwrap_or_else(|err| {
-            panic!("{}: failed to commit forwarding pipeline ({})", target, err)
-        });
+        .unwrap_or_else(|err| panic!("{}: failed to commit forwarding pipeline ({})", target, err));
 }
 
 fn get_pipeline_subcommand<'a, 'b>() -> App<'a, 'b> {
@@ -158,10 +174,12 @@ fn get_pipeline_subcommand<'a, 'b>() -> App<'a, 'b> {
         .arg(Arg::from_usage("--cookie 'Print cookie on stdout'"))
 }
 
-fn do_get_pipeline(get_pipeline: &ArgMatches,
-                   device_id: u64,
-                   target: &str,
-                   client: &P4RuntimeClient) {
+fn do_get_pipeline(
+    get_pipeline: &ArgMatches,
+    device_id: u64,
+    target: &str,
+    client: &P4RuntimeClient,
+) {
     let opaque = get_pipeline.value_of_os("opaque");
     let cookie = get_pipeline.is_present("cookie");
     let mut p4info = get_pipeline.value_of_os("p4info");
@@ -172,23 +190,25 @@ fn do_get_pipeline(get_pipeline: &ArgMatches,
     let mut get_pipeline_request = GetForwardingPipelineConfigRequest::new();
     get_pipeline_request.set_device_id(device_id);
     use proto::p4runtime::GetForwardingPipelineConfigRequest_ResponseType::*;
-    get_pipeline_request.set_response_type(
-        if opaque != None && p4info != None {
-            ALL
-        } else if opaque != None {
-            DEVICE_CONFIG_AND_COOKIE
-        } else if p4info != None {
-            P4INFO_AND_COOKIE
-        } else if cookie {
-            COOKIE_ONLY
-        } else {
-            unreachable!()
-        });
+    get_pipeline_request.set_response_type(if opaque != None && p4info != None {
+        ALL
+    } else if opaque != None {
+        DEVICE_CONFIG_AND_COOKIE
+    } else if p4info != None {
+        P4INFO_AND_COOKIE
+    } else if cookie {
+        COOKIE_ONLY
+    } else {
+        unreachable!()
+    });
 
     let pipeline_response = client
         .get_forwarding_pipeline_config(&get_pipeline_request)
         .unwrap_or_else(|err| {
-            panic!("{}: failed to retrieve forwarding pipeline ({})", target, err)
+            panic!(
+                "{}: failed to retrieve forwarding pipeline ({})",
+                target, err
+            )
         });
     let pipeline = pipeline_response.get_config();
 
@@ -198,31 +218,35 @@ fn do_get_pipeline(get_pipeline: &ArgMatches,
         } else if p4info == "-" {
             println!("{:#?}", pipeline.get_p4info());
         } else {
-            fs::write(p4info, pipeline.get_p4info().write_to_bytes().unwrap())
-                .unwrap_or_else(|err| {
-                    panic!("{}: could not write P4Info ({})",
-                           p4info.to_string_lossy(), err)
-                });
+            fs::write(p4info, pipeline.get_p4info().write_to_bytes().unwrap()).unwrap_or_else(
+                |err| {
+                    panic!(
+                        "{}: could not write P4Info ({})",
+                        p4info.to_string_lossy(),
+                        err
+                    )
+                },
+            );
         }
     }
 
     if let Some(opaque) = opaque {
         let config = pipeline.get_p4_device_config();
         if config.len() == 0 {
-            eprintln!("{}: warning: device returned empty opaque configuration", target);
+            eprintln!(
+                "{}: warning: device returned empty opaque configuration",
+                target
+            );
         }
 
         if opaque != "-" {
-            fs::write(opaque, config)
-                .unwrap_or_else(|err| {
-                    panic!("{}: could not write opaque configuration ({})",
-                           target, err)
-                });
+            fs::write(opaque, config).unwrap_or_else(|err| {
+                panic!("{}: could not write opaque configuration ({})", target, err)
+            });
         } else if !stdout_isatty() {
-            io::stdout().write_all(pipeline.get_p4_device_config())
-                .unwrap_or_else(|err| {
-                    panic!("-: could not write opaque configuration ({})", err)
-                });
+            io::stdout()
+                .write_all(pipeline.get_p4_device_config())
+                .unwrap_or_else(|err| panic!("-: could not write opaque configuration ({})", err));
         } else if let Some(s) = bytes_to_text(config.to_vec()) {
             println!("{}", s)
         } else {
@@ -235,28 +259,59 @@ fn do_get_pipeline(get_pipeline: &ArgMatches,
     }
 }
 
+fn get_capabilities_subcommand<'a, 'b>() -> App<'a, 'b> {
+    SubCommand::with_name("get-capabilities")
+        .about("Prints the server's capabilities string.")
+        .long_about("Prints the server's capabilities string (a version number, \
+                     e.g. \"1.1.0-rc.1\").")
+}
+
+fn do_get_capabilities(
+    target: &str,
+    client: &P4RuntimeClient,
+) {
+    let capabilities_response = client
+        .capabilities(&CapabilitiesRequest::new())
+        .unwrap_or_else(|err| {
+            panic!(
+                "{}: failed to get capabilities ({})",
+                target, err
+            )
+        });
+    println!("{}", capabilities_response.p4runtime_api_version)
+}
+
 fn main() {
-    let matches = App::new(env!("CARGO_PKG_NAME")).max_term_width(80)
+    let matches = App::new(env!("CARGO_PKG_NAME"))
+        .max_term_width(80)
         .version(env!("CARGO_PKG_VERSION"))
         .about("Queries and controls programmable switches using the P4Runtime API")
-        .arg(Arg::from_usage("-t, --target <TARGET> 'Remote switch target'")
-             .default_value("localhost:50051"))
-        .arg(Arg::from_usage("-d, --device-id <ID> 'Device ID'")
-             .validator(validate_u64)
-             .default_value("0"))
-        .arg(Arg::from_usage("-r, --role-id <ID> 'Role ID'")
-             .validator(validate_u64)
-             .default_value("0"))
-        .arg(Arg::from_usage("-e, --election-id [ID] 'Election ID'")
-             .validator(validate_uint128))
+        .arg(
+            Arg::from_usage("-t, --target <TARGET> 'Remote switch target'")
+                .default_value("localhost:50051"),
+        )
+        .arg(
+            Arg::from_usage("-d, --device-id <ID> 'Device ID'")
+                .validator(validate_u64)
+                .default_value("0"),
+        )
+        .arg(
+            Arg::from_usage("-r, --role-id <ID> 'Role ID'")
+                .validator(validate_u64)
+                .default_value("0"),
+        )
+        .arg(Arg::from_usage("-e, --election-id [ID] 'Election ID'").validator(validate_uint128))
         .subcommand(get_pipeline_subcommand())
         .subcommand(set_pipeline_subcommand())
         .subcommand(commit_pipeline_subcommand())
+        .subcommand(get_capabilities_subcommand())
         .get_matches();
 
     let device_id = parse_u64(matches.value_of("device-id").unwrap()).unwrap();
     let role_id = parse_u64(matches.value_of("role-id").unwrap()).unwrap();
-    let election_id = matches.value_of("election-id").map(|x| parse_uint128(x).unwrap());
+    let election_id = matches
+        .value_of("election-id")
+        .map(|x| parse_uint128(x).unwrap());
 
     let env = Arc::new(EnvBuilder::new().build());
     let target = matches.value_of("target").unwrap();
@@ -264,12 +319,20 @@ fn main() {
     let client = P4RuntimeClient::new(ch);
 
     if let Some(set_pipeline) = matches.subcommand_matches("set-pipeline") {
-        do_set_pipeline(set_pipeline, device_id, role_id, election_id,
-                        target, &client);
+        do_set_pipeline(
+            set_pipeline,
+            device_id,
+            role_id,
+            election_id,
+            target,
+            &client,
+        );
     } else if let Some(_) = matches.subcommand_matches("commit-pipeline") {
         do_commit_pipeline(device_id, role_id, election_id, target, &client);
     } else if let Some(get_pipeline) = matches.subcommand_matches("get-pipeline") {
         do_get_pipeline(get_pipeline, device_id, target, &client);
+    } else if let Some(_) = matches.subcommand_matches("get-capabilities") {
+        do_get_capabilities(target, &client);
     } else {
         unreachable!()
     }
