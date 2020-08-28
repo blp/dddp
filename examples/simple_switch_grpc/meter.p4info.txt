@@ -1,0 +1,54 @@
+pkg_info {
+  arch: "v1model"
+}
+tables {
+  preamble {
+    id: 43999865
+    name: "ingress.t_redirect"
+    alias: "t_redirect"
+  }
+  match_fields {
+    id: 1
+    name: "sm.ingress_port"
+    bitwidth: 9
+    match_type: EXACT
+  }
+  action_refs {
+    id: 19742702
+  }
+  action_refs {
+    id: 21257015
+    annotations: "@defaultonly"
+    scope: DEFAULT_ONLY
+  }
+  direct_resource_ids: 364617968
+  size: 1024
+}
+actions {
+  preamble {
+    id: 21257015
+    name: "NoAction"
+    alias: "NoAction"
+    annotations: "@noWarn(\"unused\")"
+  }
+}
+actions {
+  preamble {
+    id: 19742702
+    name: "ingress.port_redirect"
+    alias: "port_redirect"
+  }
+}
+direct_meters {
+  preamble {
+    id: 364617968
+    name: "ingress.mtr"
+    alias: "mtr"
+  }
+  spec {
+    unit: PACKETS
+  }
+  direct_table_id: 43999865
+}
+type_info {
+}

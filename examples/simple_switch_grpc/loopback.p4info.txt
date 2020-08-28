@@ -1,0 +1,24 @@
+pkg_info {
+  arch: "v1model"
+}
+tables {
+  preamble {
+    id: 42046103
+    name: "t_redirect"
+    alias: "t_redirect"
+  }
+  action_refs {
+    id: 28787562
+  }
+  const_default_action_id: 28787562
+  size: 1024
+}
+actions {
+  preamble {
+    id: 28787562
+    name: "redirect"
+    alias: "redirect"
+  }
+}
+type_info {
+}

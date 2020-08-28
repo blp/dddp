@@ -1,0 +1,93 @@
+pkg_info {
+  arch: "v1model"
+}
+tables {
+  preamble {
+    id: 42046103
+    name: "t_redirect"
+    alias: "t_redirect"
+  }
+  match_fields {
+    id: 1
+    name: "sm.packet_length"
+    annotations: "@foo(\"bar\")"
+    annotations: "@baz"
+    bitwidth: 32
+    match_type: EXACT
+    structured_annotations {
+      name: "quux"
+      kv_pair_list {
+        kv_pairs {
+          key: "a"
+          value {
+            int64_value: 3
+          }
+        }
+        kv_pairs {
+          key: "c"
+          value {
+            int64_value: 4
+          }
+        }
+      }
+    }
+    structured_annotations {
+      name: "wibbly"
+      expression_list {
+        expressions {
+          int64_value: 1
+        }
+        expressions {
+          string_value: "hello"
+        }
+        expressions {
+          bool_value: true
+        }
+        expressions {
+          bool_value: false
+        }
+        expressions {
+          int64_value: 11
+        }
+      }
+    }
+  }
+  action_refs {
+    id: 33179932
+  }
+  action_refs {
+    id: 21257015
+    annotations: "@defaultonly"
+    scope: DEFAULT_ONLY
+  }
+  direct_resource_ids: 333676428
+  size: 1024
+}
+actions {
+  preamble {
+    id: 21257015
+    name: "NoAction"
+    alias: "NoAction"
+    annotations: "@noWarn(\"unused\")"
+  }
+}
+actions {
+  preamble {
+    id: 33179932
+    name: "port_redirect"
+    alias: "port_redirect"
+  }
+}
+direct_counters {
+  preamble {
+    id: 333676428
+    name: "cntr"
+    alias: "cntr"
+  }
+  spec {
+    unit: BOTH
+  }
+  direct_table_id: 42046103
+}
+type_info {
+}

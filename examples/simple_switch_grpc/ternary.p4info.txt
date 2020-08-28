@@ -1,0 +1,50 @@
+pkg_info {
+  arch: "v1model"
+}
+tables {
+  preamble {
+    id: 37069687
+    name: "ingress.ter"
+    alias: "ter"
+  }
+  match_fields {
+    id: 1
+    name: "h.hdr.f1"
+    bitwidth: 16
+    match_type: TERNARY
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 20804037
+  }
+  action_refs {
+    id: 24415793
+  }
+  size: 1024
+}
+actions {
+  preamble {
+    id: 21257015
+    name: "NoAction"
+    alias: "NoAction"
+    annotations: "@noWarn(\"unused\")"
+  }
+}
+actions {
+  preamble {
+    id: 20804037
+    name: "ingress.send_1"
+    alias: "send_1"
+  }
+}
+actions {
+  preamble {
+    id: 24415793
+    name: "ingress.send_2"
+    alias: "send_2"
+  }
+}
+type_info {
+}
